@@ -1,9 +1,6 @@
 struct sembuf *op;
 struct command *CMDMEM;
 
-#define BUFSIZE 2048
-
-
 int next_integer(char **buf_offset)
 {
     char *s = *buf_offset
@@ -93,47 +90,49 @@ int main(int argc, char **argv)
     int finput = open(argv[1], O_RDONLY, S_IRUSR | S_IRGRP);
     int foutput = open(argv[2], O_WRONLY | O_CREAT | O_SYNC, S_IWUSR | S_IWGRP);
 
-    // Get threads:
-    char buf[BUFSIZE];
+    // Get Input filesize:
+    const int FILESIZE;
+    struct stat *stats = malloc(sizeof(struct stat));
+    fstat(finput, stats);
+    FILESIZE = stats->st_size;
+    free(stats);
+
+    // Read file into buffer:
+    char buf[FILESIZE];
     char *buf_offset = buf;
-    int nread = read(finput, buf, BUFSIZE)
+    int nread = read(finput, buf, FILESIZE)
+
+    // Get threads:
     printf("Getting number of threads...\n");
     int NPROCS = next_number(&buf_offset);
-    if (buf_offset >= buf + BUFSIZE)
-        exception("please make the start of the file shorter");
     if (NPROCS<1)
         exception("please create more processes");
 
     //  Init shared resources:
-    int key_t KEY;
-    KEY = ftok(argv[2],'a');
+    //  !!! using NPROCS+1 because i want to use the id to address a semaphore or shared memory, and the id is >=1 in the input file! (clarity process)
+    int key_t KEY = ftok(argv[2],'a');
     int semfreeid = semget(KEY, NPROCS+1, IPC_CREAT | IPC_EXCL | S_IRWXU | S_IRWXG); // execute permission is meaningless for semaphores, but ok..
-    union semun cmdinfo;
-    {
-        unsigned short array[NPROCS] = {1};
+        union semun cmdinfo;
+        unsigned short array[NPROCS+1] = {1};
         cmdinfo.array = array;
         semctl(semfree, 0, SETALL, cmdinfo);
-    }
     KEY = ftok(argv[2],'b');
     int semworkid = semget(KEY, NPROCS+1, IPC_CREAT | IPC_EXCL | S_IRWXU | S_IRWXG); 
-    {
-        unsigned short array[NPROCS] = {0};
-        cmdinfo.array = array;
+        for (int i=0; i<NPROCS+1;++i)
+            cmdinfo.array[i] = 0;
         semctl(semfree, 0, SETALL, cmdinfo);
-    }
     KEY = ftok(argv[2],'c'); // can be 'a'?
     int shmid = shmget(KEY, sizeof(struct command)*(NPROCS+1), IPC_CREAT | IPC_EXCL | S_IRWXU | S_IRWXG);
-    struct command *CMDMEM = shmat(shmid, NULL, 0);
+        struct command *CMDMEM = shmat(shmid, NULL, 0);
 
     // Make threads:
     for (int id = 1; id<=NPROCS; ++id)
     {
         int pid = fork();
-        if (pid==0)
-        {
+        if (pid<0)
+            exception("one of the forks failed");
+        else if (pid==0)
             slave(id);
-            exit(1);
-        }
     }
 
     // Father:
