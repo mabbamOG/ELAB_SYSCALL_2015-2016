@@ -1,12 +1,8 @@
 struct sembuf *op;
+struct command *CMDMEM;
 
 #define BUFSIZE 2048
 
-struct command
-{
-    char instruction;
-    int par1, par2, res;
-};
 
 int next_integer(char **buf_offset)
 {
@@ -40,64 +36,105 @@ int next_command(char **buf_offset, struct command *cmd)
 
 void slave(int id)
 {
-    P(work,id);
-    // Get data
-    // ....
-    // Drop result
-    // ....
-    V(free,id);
+    while(1)
+    {
+        P(work,id);
+            switch(CMDMEM[id].instruction)// Get Data
+            {
+                case '+':// Drop Result
+                    CMDMEM[id].res = CMDMEM[id].par1 + CMDMEM[id].par2;
+                    break;
+                case '-':
+                    CMDMEM[id].res = CMDMEM[id].par1 - CMDMEM[id].par2;
+                    break;
+                case '/':
+                    CMDMEM[id].res = CMDMEM[id].par1 / CMDMEM[id].par2;
+                    break;
+                case '*':
+                    CMDMEM[id].res = CMDMEM[id].par1 * CMDMEM[id].par2;
+                    break;
+                default:
+                    break;
+            }
+            CMDMEM[id].instruction = '!';// ??? needed?
+        V(free,id);
+    }
 }
 
 void master(int id)
 {
     P(free,id);
     // Get result...
-    // ...
+    if (CMDMEM[id] == '!')
+        RESULTS[
     // Drop the data
     // ...
     V(work,id);
 }
 
+void help()
+{
+    fprintf(stderr,"uso: %s <nome file di calcolo> <nome file per i risultati>\n");
+    fprintf(stderr,"requirements:\n\
+            * no line must be empty\n\
+            * you may use as many spaces as you like is each line\n\
+            * every line must contain expected information\n");
+    exit(1);
+}
+
 
 int main(int argc, char **argv)
 {
+    // Check if correct launch:
     if (argc != 3)
-    {
-        fprintf(stderr,"uso: %s <nome file di calcolo> <nome file per i risultati>\n");
-        fprintf(stderr,"requirements:\n\
-                * no line must be empty\n\
-                * you may use as many spaces as you like is each line\n\
-                * every line must contain expected information\n");
-        exit(1);
-    }
+        help();
+
+    // Init resources:
     int finput = open(argv[1], O_RDONLY, S_IRUSR | S_IRGRP);
     int foutput = open(argv[2], O_WRONLY | O_CREAT | O_SYNC, S_IWUSR | S_IWGRP);
+
+    // Get threads:
     char buf[BUFSIZE];
     char *buf_offset = buf;
-    int nread = 0;
-    nread = read(finput, buf, BUFSIZE)
-    // Get threads
+    int nread = read(finput, buf, BUFSIZE)
     printf("Getting number of threads...\n");
     int NPROCS = next_number(&buf_offset);
     if (buf_offset >= buf + BUFSIZE)
         exception("please make the start of the file shorter");
     if (NPROCS<1)
         exception("please create more processes");
-    // Make threads
+
+    //  Init shared resources:
+    int key_t KEY;
+    KEY = ftok(argv[2],'a');
+    int semfreeid = semget(KEY, NPROCS+1, IPC_CREAT | IPC_EXCL | S_IRWXU | S_IRWXG); // execute permission is meaningless for semaphores, but ok..
+    union semun cmdinfo;
+    {
+        unsigned short array[NPROCS] = {1};
+        cmdinfo.array = array;
+        semctl(semfree, 0, SETALL, cmdinfo);
+    }
+    KEY = ftok(argv[2],'b');
+    int semworkid = semget(KEY, NPROCS+1, IPC_CREAT | IPC_EXCL | S_IRWXU | S_IRWXG); 
+    {
+        unsigned short array[NPROCS] = {0};
+        cmdinfo.array = array;
+        semctl(semfree, 0, SETALL, cmdinfo);
+    }
+    KEY = ftok(argv[2],'c'); // can be 'a'?
+    int shmid = shmget(KEY, sizeof(struct command)*(NPROCS+1), IPC_CREAT | IPC_EXCL | S_IRWXU | S_IRWXG);
+    struct command *CMDMEM = shmat(shmid, NULL, 0);
+
+    // Make threads:
     for (int id = 1; id<=NPROCS; ++id)
     {
         int pid = fork();
         if (pid==0)
+        {
             slave(id);
+            exit(1);
+        }
     }
-
-
-
-
-
-
-
-
 
     // Father:
     struct command *cmd = malloc(sizeof(struct command));
