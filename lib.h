@@ -1,17 +1,4 @@
-void P(int semid, int semchoice)
-{
-    struct sembuf op = { semchoice, -1, 0 };
-    semop(semid, &op, 1);
-}
-
-
-void V(int semid, int semchoice)
-{
-    struct sembuf op = { semchoice, 1, 0 };
-    semop(semid, &op, 1);
-}
-
-// ???
+// ??? do i really need this?
 union semun  // needed for semctl() syscall
 {
    int              val;    /* Value for SETVAL */
@@ -26,15 +13,40 @@ struct command
     int par1, par2, res, res_pos;
 };
 
+void P(int semid, int semchoice)
+{
+    struct sembuf op = { semchoice, -1, 0 };
+    if (semop(semid, &op, 1) == -1)
+        exception("ERROR while waiting on semaphore!");
+}
+
+
+void V(int semid, int semchoice)
+{
+    struct sembuf op = { semchoice, 1, 0 };
+    if (semop(semid, &op, 1) == -1)
+        exception("ERROR while signaling semaphore!");
+}
+
 int get_num_ops(char **buf_offset)
 {
     char *s = *buf_offset;
     int res = 0;
-    while (*s!='@')
+    // Ignore count of rubbish before the first instruction
+    while (*s == ' ' || *s == '\n')
+        ++s;
+    ++res;
+    // Count all newlines
+    while (*s!='\0')
         if (*s++ == '\n')
             ++res;
-    if (*(s-1) == '\n') // if last character of file is '\n', than i need to remove it
-        --res;
+    // Remove count of rubbish at the end of the file
+    while (*s == ' ' || *s == '\n')
+    {
+        --s;
+        if (*s == '\n')
+            --res;
+    }
     return res;
 }
 
