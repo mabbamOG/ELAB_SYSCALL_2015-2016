@@ -1,4 +1,5 @@
 // ??? do i really need this?
+void exception(char *s);
 union semun  // needed for semctl() syscall
 {
    int              val;    /* Value for SETVAL */
@@ -28,9 +29,8 @@ void V(int semid, int semchoice)
         exception("ERROR while signaling semaphore!");
 }
 
-int get_num_ops(char **buf_offset)
+int get_num_ops(char *s)
 {
-    char *s = *buf_offset;
     int res = 0;
     // Ignore count of rubbish before the first instruction
     while (*s == ' ' || *s == '\n')
@@ -52,7 +52,7 @@ int get_num_ops(char **buf_offset)
 
 int next_integer(char **buf_offset)
 {
-    char *s = *buf_offset
+    char *s = *buf_offset;
     while(*s== ' ' || *s=='\n')
         ++s;
     int sign = 1;
