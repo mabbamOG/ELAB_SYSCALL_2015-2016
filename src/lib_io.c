@@ -1,26 +1,4 @@
-// ??? do i really need this?
-void exception(char *s);
-
-struct command
-{
-    char instr;
-    int par1, par2, res, res_pos;
-};
-
-void P(int semid, int semchoice)
-{
-    struct sembuf op = { semchoice, -1, 0 };
-    if (semop(semid, &op, 1) == -1)
-        exception("ERROR while waiting on semaphore!");
-}
-
-
-void V(int semid, int semchoice)
-{
-    struct sembuf op = { semchoice, 1, 0 };
-    if (semop(semid, &op, 1) == -1)
-        exception("ERROR while signaling semaphore!");
-}
+#include "lib_io.h"
 
 int get_num_ops(char *s)
 {
