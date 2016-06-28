@@ -10,14 +10,13 @@
 #include <fcntl.h>
 #include <stdlib.h>
 // TODO: standard naming of "get" and "next" functions, and all other functions!
-// TODO: check if i really need +1 size on both buf and semaphores and shmem
-// FIXME: is buf_offset really needed now that i keep whole file in memory and never go back?
 // TODO: split lib.h in multiple libraries containing different function types
 // TODO: ??? put global vars in lib.h?
-// TODO: finish father routine
-// FIXME: remove union, leave only array
 // TODO: do i really need to detach shared memory?
-// TODO: ??? fflush needed?
+// TODO: should i use buf_offset?
+// TODO: check semaphore permissions semget
+// TODO: check all other ipc get/ctl stuff...need to understand perfectly why all params are used or not
+// TODO: should i check for '\0' in next_ functions?
 #include "lib.h"
 
 // GLOBAL VARIABLES:
@@ -53,7 +52,6 @@ void destroy_shared_resources()
 void exception(char *s)
 {
     printf("%s\n",s);
-    perror("==>PERROR: ");
     destroy_shared_resources();
     exit(1);
 }
@@ -69,7 +67,7 @@ void init_shared_resources(char *keystr,int res_size)
     key_t KEY = ftok(keystr,'x');
         if (KEY == -1)
             exception("ERROR while getting unique key for shared resource SEMID_FREE!");
-    SEMID_FREE = semget(KEY, res_size, IPC_CREAT | IPC_EXCL | S_IRWXU | S_IRWXG); // execute permission is meaningless for semaphores, but ok..
+    SEMID_FREE = semget(KEY, res_size, IPC_CREAT | IPC_EXCL | S_IRWXU | S_IRWXG);
         if (SEMID_FREE == -1)
             exception("ERROR while getting id for shared resource SEMID_FREE!");
         unsigned short array[res_size];
@@ -219,7 +217,6 @@ int main(int argc, char **argv)
     if(read(fdinput, buf, FILESIZE) == -1)
         exception("ERROR while loading input file into buffer!");
     buf[FILESIZE-1]='\0'; // set end marker
-    /// ??? fflush?
     if (close(fdinput) == -1)
         exception("ERROR while closing input file!");
 
