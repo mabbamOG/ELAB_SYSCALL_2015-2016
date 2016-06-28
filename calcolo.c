@@ -1,9 +1,11 @@
-#include <signal.h>
+#include <signal.h> //  not needed when there is sys/wait.h
+#include <sys/wait.h>
 #include <unistd.h>
 #include <stdio.h>
-#include <sys/wait.h>
 #include <sys/sem.h>
 #include <sys/shm.h>
+#include <sys/ipc.h>
+#include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <stdlib.h>
@@ -64,36 +66,34 @@ void force_quit(int sigid)
 void init_shared_resources(char *keystr,int res_size)
 {
     // Create First Semaphore Array
-    key_t KEY = ftok(keystr,'a');
+    key_t KEY = ftok(keystr,'x');
         if (KEY == -1)
             exception("ERROR while getting unique key for shared resource SEMID_FREE!");
     SEMID_FREE = semget(KEY, res_size, IPC_CREAT | IPC_EXCL | S_IRWXU | S_IRWXG); // execute permission is meaningless for semaphores, but ok..
         if (SEMID_FREE == -1)
             exception("ERROR while getting id for shared resource SEMID_FREE!");
-        union semun cmdinfo;
         unsigned short array[res_size];
         for (int i=0; i<res_size; ++i)
             array[i] = 1;
-        cmdinfo.array = array;
-        if (semctl(SEMID_FREE, 0, SETALL, cmdinfo) == -1)
+        if (semctl(SEMID_FREE, 0, SETALL, &array) == -1)
             exception("ERROR while setting values for shared resource SEMID_FREE!");
     printf("FATHER: Sem1 is %d\n",SEMID_FREE);
 
     // Create Second Semaphore Array
-    KEY = ftok(keystr,'b');
+    KEY = ftok(keystr,'y');
         if (KEY == -1)
             exception("ERROR while getting unique key for shared resource SEMID_WORK!");
     SEMID_WORK = semget(KEY, res_size, IPC_CREAT | IPC_EXCL | S_IRWXU | S_IRWXG); 
         if (SEMID_WORK == -1)
             exception("ERROR while getting id for shared resource SEMID_WORK!");
         for (int i=0; i<res_size;++i)
-            cmdinfo.array[i] = 0;
-        if (semctl(SEMID_WORK, 0, SETALL, cmdinfo) == -1)
+            array[i] = 0;
+        if (semctl(SEMID_WORK, 0, SETALL, &array) == -1)
             exception("ERROR while setting values for shared resource SEMID_WORK!");
     printf("FATHER: Sem2 is %d\n",SEMID_WORK);
     
     // Create and attach Shared Memory
-    KEY = ftok(keystr,'c'); // can be 'a'?
+    KEY = ftok(keystr,'z'); // can be 'a'?
         if (KEY == -1)
             exception("ERROR while getting unique key for shared resource SHMID!");
     SHMID = shmget(KEY, sizeof(struct command)*res_size, IPC_CREAT | IPC_EXCL | S_IRWXU | S_IRWXG);
@@ -195,10 +195,10 @@ int main(int argc, char **argv)
 
     // Get access to input and output files:
     printf("FATHER: opening files...\n");
-    int fdinput = open(argv[1], O_RDONLY, S_IRUSR | S_IRGRP);
+    int fdinput = open(argv[1], O_RDONLY, 0);
     if (fdinput == -1)
         exception("ERROR while opening input file!");
-    int fdoutput = open(argv[2], O_WRONLY | O_CREAT | O_SYNC, S_IWUSR | S_IWGRP);
+    int fdoutput = open(argv[2], O_WRONLY | O_CREAT | O_SYNC | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
     if (fdoutput == -1)
         exception("ERROR while opening output file!");
 
@@ -206,19 +206,19 @@ int main(int argc, char **argv)
     struct stat stats;
     if (fstat(fdinput, &stats) == -1)
         exception("ERROR while getting input file filesize!");
-    const int FILESIZE = stats.st_size + 1; // !!! +1 because i need space for end marker!
-    if (FILESIZE < MINFILESIZE + 1)
+    const int FILESIZE = stats.st_size;
+    if (FILESIZE < MINFILESIZE)
         exception("ERROR input file too small");
-    if (FILESIZE > MAXFILESIZE + 1)
+    if (FILESIZE > MAXFILESIZE)
         exception("ERROR input file way too big");
 
     // Read file into buffer:
     printf("FATHER: reading input file...\n");
     char buf[FILESIZE];
     char *buf_offset = buf;
-    if(read(fdinput, buf, FILESIZE-1) == -1)
+    if(read(fdinput, buf, FILESIZE) == -1)
         exception("ERROR while loading input file into buffer!");
-    buf[FILESIZE-1]='\0';
+    buf[FILESIZE-1]='\0'; // set end marker
     /// ??? fflush?
     if (close(fdinput) == -1)
         exception("ERROR while closing input file!");
@@ -226,7 +226,7 @@ int main(int argc, char **argv)
     // Get threads:
     const int NPROCS = next_integer(&buf_offset);
     if (NPROCS<1)
-        exception("please create more processes");
+       exception("please create more processes");
 
     //  Init shared resources:
     printf("FATHER: getting shared resources...\n");
