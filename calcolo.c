@@ -4,8 +4,9 @@
 // TODO: split lib.h in multiple libraries containing different function types
 // TODO: ??? put global vars in lib.h?
 // TODO: finish father routine
-// TODO: find_free_process()
-// TODO: exception()
+// FIXME: remove union, leave only array
+// TODO: do i really need to detach shared memory?
+// TODO: ??? fflush needed?
 #include "lib.h"
 
 // GLOBAL VARIABLES:
@@ -16,21 +17,36 @@ int SEMID_WORK = -1;
 int SHMID = -1;
 struct command *SHM = (void *) -1;
 
+void force_quit(int sigid)
+{
+    exception("ERROR received Ctrl-C signal!");
+}
+
 void exception(char *s)
 {
     printf("%s\n",s);
+    destroy_shared_resources();
+    exit(1);
+}
+
+void destroy_shared_resources()
+{
     printf("Freeing resources...\n");
     printf("* Semaphore %d\n",SEMID_FREE);
     if (SEMID_FREE != -1)
-        semctl(...);
+        if (semctl(SEMID_FREE, 0, IPC_RMID) == -1)
+            printf("!!!\t(please run: ipcrm -s %d)\n",SEMID_FREE);
     printf("* Semaphore %d\n",SEMID_WORK);
     if (SEMID_WORK != -1)
-        semctl(...);
+        if (semctl(SEMID_WORK, 0, IPC_RMID) == -1)
+            printf("!!!\t(please run: ipcrm -s %d)\n",SEMID_WORK);
     if (SHM != (void *) -1)
-        shmdt(...);
+        if (shmdt(SHM) == -1)
+            printf("!!!\t(error detaching shared memory from process...should be no problem)\n");
     printf("* Shared Memory %d\n",SHMID);
     if (SHMID != -1)
-        shmctl(...);
+        if (shmctl(SHMID, IPC_RMID, NULL) == -1)
+            printf("!!!\t(plrease run: ipcrm -m %d)\n",SHMID);
     printf("DONE!\n");
 }
 
@@ -75,6 +91,25 @@ void init_shared_resources(char *keystr,int res_size)
     // Initialize shared memory:
     for(int i=0; i<res_size; ++i)
         SHMEM[i].instr = '?'; // no op yet
+}
+
+int find_free_procs()
+{
+    struct sembuf op = { 0, -1, IPC_NOWAIT };
+    int id;
+    for (id=1; id<=NPROCS; ++id)
+    {
+        op.sem_num = id;
+        if (semop(SEMID_FREE, &op, 1) == 0)
+        {
+            V(SEMID_FREE,id); // free up resource i just used
+            break;
+        }
+    }
+    // if not found, use first proc
+    if (id == NPROCS + 1)
+        id = 1;
+    return id;
 }
 
 
@@ -131,12 +166,14 @@ void help()
             * no line must be empty\n\
             * you may use as many spaces as you like is each line\n\
             * every line must contain expected information\n");
-    exit(1);
+    exit(0);
 }
 
 
 int main(int argc, char **argv)
 {
+    if (signal(SIGINT, force_quit) == SIG_ERR)
+        exception("ERROR while registering SIGINT signal!");
     // Check if correct launch:
     if (argc != 3)
         help();
@@ -162,9 +199,10 @@ int main(int argc, char **argv)
     // Read file into buffer:
     char buf[FILESIZE];
     char *buf_offset = buf;
-    if(read(finput, buf, FILESIZE) == -1)
+    if(read(finput, buf, FILESIZE-1) == -1)
         exception("ERROR while loading input file into buffer!");
-    buf[FILESIZE-1]='@';
+    buf[FILESIZE-1]='\0';
+    /// ??? fflush?
     if (close(fdinput) == -1)
         exception("ERROR while closing input file!");
 
@@ -183,7 +221,7 @@ int main(int argc, char **argv)
         int pid = fork();
         if (pid == -1)
             exception("ERROR while forking!");
-        else if (pid==0)
+        else if (pid==0) // Child:
             slave(id);
     }
 
@@ -191,15 +229,46 @@ int main(int argc, char **argv)
     struct command cmd;
     const int NOPS = get_num_ops(buf_offset);
     int RESULTS[NOPS];
+
+    // Send all commands
     for (int j = 0; j<NOPS; ++j)
     {
         // Setup info to send to process:
-        cmd.res_pos = j;
-        int id = next_command(buf_offset,&cmd);
+        int id = next_command(&buf_offset,&cmd);
         if (id == 0)
-            id = find_free_process();
+            id = find_free_procs();
 
         // Send Off Command (possibly grabbing result for previously sent command)
+        cmd.res_pos = j;
         master(id, &cmd, RESULTS);
     }
+
+    // Wait for all processing to be over, save eventual data, kill child
+    for (int id=1; id<=NPROCSl; ++id)
+    {
+        P(SEMID_FREE, id);
+        if (SHM[id].instr == '!')
+            RESULTS[SHM[id].res_pos] = SHM[id].res;
+        SHM[id].instr = 'K';
+        V(SEMID_WORK,id);
+    }
+
+    // Wait for all children to exit
+    while( wait(NULL) > 0); // ??? should i wait for nprocs processes?
+
+    // Write RESULTS to buf buffer
+    int output_size = 0;
+    for (int j=0; j<NOPS; ++j)
+        output_size += sprintf(buf + output_size, "%d\n", RESULTS[j] );
+
+    // Write buffer to output file
+    int nwrite = write(fdoutput, buf, output_size);
+    if (nwrite < output_size || nwrite == -1)
+        exception("ERROR while writing to output file!");
+    if (close(fdoutput) == -1)
+        exception("ERROR while closing output file!");
+    
+    // Free up resources
+    destroy_shared_resources();
+    return 0;
 }
