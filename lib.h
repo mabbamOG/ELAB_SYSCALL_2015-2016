@@ -1,12 +1,5 @@
 // ??? do i really need this?
 void exception(char *s);
-union semun  // needed for semctl() syscall
-{
-   int              val;    /* Value for SETVAL */
-   struct semid_ds *buf;    /* Buffer for IPC_STAT, IPC_SET */
-   unsigned short  *array;  /* Array for GETALL, SETALL */
-   struct seminfo  *__buf;  /* Buffer for IPC_INFO, Linux-Specific*/
-};
 
 struct command
 {
@@ -42,11 +35,8 @@ int get_num_ops(char *s)
             ++res;
     // Remove count of rubbish at the end of the file
     while (*s == ' ' || *s == '\n')
-    {
-        --s;
-        if (*s == '\n')
+        if (*s-- == '\n')
             --res;
-    }
     return res;
 }
 
