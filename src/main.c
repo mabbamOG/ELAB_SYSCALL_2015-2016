@@ -1,14 +1,4 @@
 //#include <signal.h> //  not needed when there is sys/wait.h
-//#include <sys/wait.h>
-//#include <unistd.h>
-//#include <stdio.h>
-//#include <sys/sem.h>
-//#include <sys/shm.h>
-//#include <sys/ipc.h>
-//#include <sys/types.h>
-//#include <sys/stat.h>
-//#include <fcntl.h>
-//#include <stdlib.h>
 // TODO: standard naming of "get" and "next" functions, and all other functions!
 // TODO: split lib.h in multiple libraries containing different function types
 // TODO: ??? put global vars in lib.h?
