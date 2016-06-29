@@ -23,10 +23,12 @@ all: $(MAIN)
 
 $(MAIN): $(OBJS)
 	@echo "==> linking $@..."
+	@mkdir -p "$(BINDIR)"
 	@$(LD) $^ -o $@
 
 $(ODIR)/%.o: $(SRCDIR)/%.c # add %.h??? main does not have one!
 	@echo "==> compiling $@..."
+	@mkdir -p "$(ODIR)"
 	@$(CC) $< -o $@
 
  # WARNING: THE .H FILES ARE NOT ANALYZED FOR CHANGES!! MUST ADD THEM TO DEPENDENCIES!!!
@@ -35,14 +37,16 @@ $(ODIR)/%.o: $(SRCDIR)/%.c # add %.h??? main does not have one!
 
 
 clean:
-	@rm $(LDIR)/*.o $(BINDIR)/*.x
+	@rm -rf $(ODIR)
+	@rm -rf $(BINDIR)
 #doc:
 #	...
-#help:
-#	...
+help:
+	@echo "run: make or make <command>"
+	@echo "available commands: all clean help doc debug"
 
 debug:
 	@echo "$(SRCS)"
 	@echo "$(OBJS)"
 
-.PHONY: all clean #doc help # tasks that will always run, ignoring if files called like them exist
+.PHONY: all clean #doc help debug # tasks that will always run, ignoring if files called like them exist
