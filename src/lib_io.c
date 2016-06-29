@@ -1,4 +1,15 @@
 #include "lib_io.h"
+#include "lib_ipc.h"
+
+int strlenf(char *s)
+{
+    int offset = 0;
+    while(s[offset] != '\0')
+        if(s[offset++] == '%')
+            if (s[offset] == 's' || s[offset] == 'd')
+                break;
+    return offset;
+}
 
 int get_num_ops(char *s)
 {

@@ -1,4 +1,9 @@
 #include "lib_ipc.h"
+#include "lib_error.h"
+#include <sys/sem.h>
+#include <sys/shm.h>
+#include <fcntl.h>
+#include <stdlib.h>
 
 int SEMID_FREE = -1;
 int SEMID_WORK = -1;
@@ -22,31 +27,36 @@ void V(int semid, int semchoice)
 
 void destroy_shared_resources()
 {
-    printf("Freeing resources...\n");
-    printf("* Semaphore %d\n",SEMID_FREE);
+    debugf("Freeing resources...\n");
+    debugf("* Semaphore %d\n",SEMID_FREE);
     if (SEMID_FREE != -1)
         if (semctl(SEMID_FREE, 0, IPC_RMID) == -1)
-            printf("!!!\t(please run: ipcrm -s %d)\n",SEMID_FREE);
-    printf("* Semaphore %d\n",SEMID_WORK);
+            debugf("!!!\t(please run: ipcrm -s %d)\n",SEMID_FREE);
+        else SEMID_FREE = -1;
+    debugf("* Semaphore %d\n",SEMID_WORK);
     if (SEMID_WORK != -1)
         if (semctl(SEMID_WORK, 0, IPC_RMID) == -1)
-            printf("!!!\t(please run: ipcrm -s %d)\n",SEMID_WORK);
+            debugf("!!!\t(please run: ipcrm -s %d)\n",SEMID_WORK);
+        else SEMID_WORK = -1;
     if (SHM != (void *) -1)
         if (shmdt(SHM) == -1)
-            printf("!!!\t(error detaching shared memory from process...should be no problem)\n");
-    printf("* Shared Memory %d\n",SHMID);
+            debugf("!!!\t(error detaching shared memory from process...should be no problem)\n");
+        else SHM = (void *) -1;
+    debugf("* Shared Memory %d\n",SHMID);
     if (SHMID != -1)
         if (shmctl(SHMID, IPC_RMID, NULL) == -1)
-            printf("!!!\t(plrease run: ipcrm -m %d)\n",SHMID);
-    printf("DONE!\n");
+            debugf("!!!\t(plrease run: ipcrm -m %d)\n",SHMID);
+        else SHMID = -1;
+    debugf("DONE!\n");
 }
 
 void init_shared_resources(char *keystr,int res_size)
 {
     // Create First Semaphore Array
-    key_t KEY = ftok(keystr,'x');
+    key_t KEY = ftok(keystr,'a');
         if (KEY == -1)
             exception("ERROR while getting unique key for shared resource SEMID_FREE!");
+    debugf("FATHER: Sem1 key: %d\n", KEY);
     SEMID_FREE = semget(KEY, res_size, IPC_CREAT | IPC_EXCL | S_IRWXU | S_IRWXG);
         if (SEMID_FREE == -1)
             exception("ERROR while getting id for shared resource SEMID_FREE!");
@@ -55,12 +65,13 @@ void init_shared_resources(char *keystr,int res_size)
             array[i] = 1;
         if (semctl(SEMID_FREE, 0, SETALL, &array) == -1)
             exception("ERROR while setting values for shared resource SEMID_FREE!");
-    printf("FATHER: Sem1 is %d\n",SEMID_FREE);
+    debugf("FATHER: Sem1 id: %d\n",SEMID_FREE);
 
     // Create Second Semaphore Array
-    KEY = ftok(keystr,'y');
+    KEY = ftok(keystr,'b');
         if (KEY == -1)
             exception("ERROR while getting unique key for shared resource SEMID_WORK!");
+    debugf("FATHER: Sem2 key: %d\n", KEY);
     SEMID_WORK = semget(KEY, res_size, IPC_CREAT | IPC_EXCL | S_IRWXU | S_IRWXG); 
         if (SEMID_WORK == -1)
             exception("ERROR while getting id for shared resource SEMID_WORK!");
@@ -68,19 +79,20 @@ void init_shared_resources(char *keystr,int res_size)
             array[i] = 0;
         if (semctl(SEMID_WORK, 0, SETALL, &array) == -1)
             exception("ERROR while setting values for shared resource SEMID_WORK!");
-    printf("FATHER: Sem2 is %d\n",SEMID_WORK);
+    debugf("FATHER: Sem2 id: %d\n",SEMID_WORK);
     
     // Create and attach Shared Memory
-    KEY = ftok(keystr,'z'); // can be 'a'?
+    KEY = ftok(keystr,'a');
         if (KEY == -1)
             exception("ERROR while getting unique key for shared resource SHMID!");
+    debugf("FATHER: Shm key: %d\n", KEY);
     SHMID = shmget(KEY, sizeof(struct command)*res_size, IPC_CREAT | IPC_EXCL | S_IRWXU | S_IRWXG);
         if (SHMID == -1)
             exception("ERROR while getting id for shared resource SHMID!");
     SHM = shmat(SHMID, NULL, 0);
         if (SHM == (void *) -1)
             exception("ERROR while attaching shared memory SHMID to process!");
-    printf("FATHER: Shm is %d\n",SHMID);
+    debugf("FATHER: Shm id: %d\n",SHMID);
 
     // Initialize shared memory:
     for(int i=0; i<res_size; ++i)

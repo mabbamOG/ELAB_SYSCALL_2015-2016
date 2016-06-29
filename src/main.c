@@ -1,14 +1,14 @@
-#include <signal.h> //  not needed when there is sys/wait.h
-#include <sys/wait.h>
-#include <unistd.h>
-#include <stdio.h>
-#include <sys/sem.h>
-#include <sys/shm.h>
-#include <sys/ipc.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <stdlib.h>
+//#include <signal.h> //  not needed when there is sys/wait.h
+//#include <sys/wait.h>
+//#include <unistd.h>
+//#include <stdio.h>
+//#include <sys/sem.h>
+//#include <sys/shm.h>
+//#include <sys/ipc.h>
+//#include <sys/types.h>
+//#include <sys/stat.h>
+//#include <fcntl.h>
+//#include <stdlib.h>
 // TODO: standard naming of "get" and "next" functions, and all other functions!
 // TODO: split lib.h in multiple libraries containing different function types
 // TODO: ??? put global vars in lib.h?
@@ -17,6 +17,17 @@
 // TODO: check semaphore permissions semget
 // TODO: check all other ipc get/ctl stuff...need to understand perfectly why all params are used or not
 // TODO: should i check for '\0' in next_ functions?
+#include "lib_ipc.h"
+#include "lib_io.h"
+#include "lib_error.h"
+#include <sys/wait.h>
+#include <sys/sem.h>
+#include <sys/ipc.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/stat.h>
 
 // GLOBAL CONSTANTS
 #define MINFILESIZE 7
@@ -29,8 +40,8 @@ void help(char *prog_name);
 
 void help(char *prog_name)
 {
-    fprintf(stderr,"uso: %s <nome file di calcolo> <nome file per i risultati>\n",prog_name);
-    fprintf(stderr,"requirements:\n\
+    debugf("uso: %s <nome file di calcolo> <nome file per i risultati>\n",prog_name);
+    debugf("requirements:\n\
             * there must be no empty lines between command instructions\n\
             * every line must contain expected information\n");
     exit(0);
@@ -47,7 +58,7 @@ int main(int argc, char **argv)
         help(argv[0]);
 
     // Get access to input and output files:
-    debug("FATHER: opening files...\n");
+    debugf("FATHER: opening files...\n");
     int fdinput = open(argv[1], O_RDONLY, 0);
     if (fdinput == -1)
         exception("ERROR while opening input file!");
@@ -66,7 +77,7 @@ int main(int argc, char **argv)
         exception("ERROR input file way too big");
 
     // Read file into buffer:
-    printf("FATHER: reading input file...\n");
+    debugf("FATHER: reading input file...\n");
     char buf[FILESIZE];
     char *buf_offset = buf;
     if(read(fdinput, buf, FILESIZE) == -1)
@@ -81,11 +92,11 @@ int main(int argc, char **argv)
        exception("please create more processes");
 
     //  Init shared resources:
-    printf("FATHER: getting shared resources...\n");
+    debugf("FATHER: getting shared resources...\n");
     init_shared_resources(argv[2],NPROCS + 1); // !!! +1 because i want to use "id" freely
 
     // Make threads:
-    printf("FATHER: forking off to %d children...\n",NPROCS);
+    debugf("FATHER: forking off to %d children...\n",NPROCS);
     for (int id = 1; id<=NPROCS; ++id)
     {
         int pid = fork();
@@ -101,7 +112,7 @@ int main(int argc, char **argv)
     int RESULTS[NOPS];
 
     // Send all commands
-    printf("FATHER: sending %d commands...\n",NOPS);
+    debugf("FATHER: sending %d commands...\n",NOPS);
     for (int j = 0; j<NOPS; ++j)
     {
         // Setup info to send to process:
@@ -115,7 +126,7 @@ int main(int argc, char **argv)
     }
 
     // Wait for all processing to be over, save eventual data, kill child
-    printf("FATHER: waiting for procs to finish...\n");
+    debugf("FATHER: waiting for procs to finish...\n");
     for (int id=1; id<=NPROCS; ++id)
     {
         P(SEMID_FREE, id);
@@ -126,25 +137,24 @@ int main(int argc, char **argv)
     }
 
     // Wait for all children to exit
-    printf("FATHER: waiting for children to die...\n");
+    debugf("FATHER: waiting for children to die...\n");
     while( wait(NULL) > 0); // ??? should i wait for nprocs processes?
 
     // Write RESULTS to buf buffer
-    printf("FATHER: writing results to output file...\n");
+    debugf("FATHER: writing results to output file...\n");
     int output_size = 0;
     for (int j=0; j<NOPS; ++j)
         output_size += sprintf(buf + output_size, "%d\n", RESULTS[j] );
 
     // Write buffer to output file
-    int nwrite = write(fdoutput, buf, output_size);
-    if (nwrite < output_size || nwrite == -1)
+    if(write(fdoutput, buf, output_size) < output_size)
         exception("ERROR while writing to output file!");
     if (close(fdoutput) == -1)
         exception("ERROR while closing output file!");
     
     // Free up resources
     destroy_shared_resources();
-    printf("OKOKOKOKOKOKOKOKOKOKOKOKOKOK :-)\n");
+    debugf("OKOKOKOKOKOKOKOKOKOKOKOKOKOK :-)\n");
     return 0;
 }
 
@@ -189,7 +199,7 @@ void slave(int id)// ??? Should make get_data | drop result, more explicit?
                     SHM[id].res = SHM[id].par1 * SHM[id].par2;
                     break;
                 case 'K':
-                    printf("PROC #%d: QUITTING!\n",id);
+                    debugf("PROC #%d: QUITTING!\n",id);
                     exit(0);
                     break;
                 default:
