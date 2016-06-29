@@ -38,7 +38,7 @@ void debugf(char *s, ...) //  MAX 1 argument!
         // Split string into 3
         char *a = s;
         int alen = offset-1;
-        char b[100];
+        static char b[100];
         int blen = 0;
         char *c = s+offset+1;
         int clen = strlenf(c);
@@ -48,7 +48,7 @@ void debugf(char *s, ...) //  MAX 1 argument!
             blen = sprintf(b, "%s", va_arg(args, char *));
 
         // Write into single buffer for atomicity (writev is faulty...)
-        char buf[500];
+        static char buf[500];
         snprintf(buf, alen+1, "%s", a);
         snprintf(buf+alen, blen+1, "%s", b);
         snprintf(buf+alen+blen, clen+1, "%s", c);
