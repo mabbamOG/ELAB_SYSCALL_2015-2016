@@ -3,31 +3,32 @@
 # DIRECTORIES
 SRCDIR = src
 BINDIR = bin
-IDIR = $(SCRDIR)/header
-LDIR = $(BINDIR)/lib
+IDIR = $(SRCDIR)/include
+ODIR = $(BINDIR)/obj
 
 # FILES
-#SRCS = main.c lib_ipc.c lib_io.c lib_error.c
-#OBJS = $(SRCS:.c=.o)
+SRCS = $(wildcard $(SRCDIR)/*.c); # all source files in source dir
+OBJS = $(addprefix $(ODIR)/, $(notdir $(addsuffix .o, $(basename $(SRCS))))) # all corresponding object files
 #HDRS = lib_ipc.h lib_io.h lib_error.h
+MAIN = $(BINDIR)/main.x # all executable files to be made
 
 # COMPILERS AND FLAGS
 CCFLAGS = -c -Wall -ggdb -I$(IDIR) # (-c no linking) (-Wall smart warnings) (-ggdb gdb debugger info) (-Idir look for .h in dir)
-LDFLAGS = -L$(LDIR) # (-L look for obj files in dir)
 CC = gcc $(CCFLAGS)
 LD = gcc $(LDFLAGS)
 
-#
-all: main.x
-	@echo "All Done!"
+all: $(MAIN)
+	@echo "==> ALL DONE!"
 
-main.x: %.o # ??? can be : %.o ? or OBJS?
-	@echo "==>linking $@"
-	@$(LD) $^ -o $(BINDIR)/$@
 
-%.o: $(SRCDIR)/%.c # wildcard compilation: default for any .o target!!!    # add %.h??? main does not have one!
-	@echo "==>compiling $@"
-	@$(CC) $< -o $(LDIR)/$@
+$(MAIN): $(OBJS)
+	@echo "==> linking $@..."
+	@$(LD) $^ -o $@
+
+$(ODIR)/%.o: $(SRCDIR)/%.c # add %.h??? main does not have one!
+	@echo "==> compiling $@..."
+	@$(CC) $< -o $@
+
  # WARNING: THE .H FILES ARE NOT ANALYZED FOR CHANGES!! MUST ADD THEM TO DEPENDENCIES!!!
 
 # %.o: $(IDIR)/%.h
@@ -39,5 +40,9 @@ clean:
 #	...
 #help:
 #	...
+
+debug:
+	@echo "$(SRCS)"
+	@echo "$(OBJS)"
 
 .PHONY: all clean #doc help # tasks that will always run, ignoring if files called like them exist
