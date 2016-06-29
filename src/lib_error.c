@@ -49,9 +49,9 @@ void debugf(char *s, ...) //  MAX 1 argument!
 
         // Write into single buffer for atomicity (writev is faulty...)
         char buf[500];
-        snprintf(buf, alen+1, a);
-        snprintf(buf+alen, blen+1, b);
-        snprintf(buf+alen+blen, clen+1, c);
+        snprintf(buf, alen+1, "%s", a);
+        snprintf(buf+alen, blen+1, "%s", b);
+        snprintf(buf+alen+blen, clen+1, "%s", c);
         if (write(2, buf, alen+blen+clen) < alen+blen+clen)
             exit(0); // can't alert user
 
