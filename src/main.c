@@ -74,15 +74,21 @@ int find_free_proc(int nprocs);
  * */
 void help(char *prog_name);
 
-void help(char *prog_name)
-{
-    debugf("uso: %s <nome file di calcolo> <nome file per i risultati>\n",prog_name);
-    debugf("requirements:\n\
-            * there must be no empty lines between command instructions\n\
-            * every line must contain all expected information\n");
-    exit(0);
-}
-
+/**
+ * @brief The main program logic.
+ *
+ * This function is nor too big, nor too small. A lot of the functionality has been offloaded to the project's
+ * library functions, although i have decided to keep some basic elements, central to the program, in here.
+ * Here they are:
+ * - input and output file handling
+ * - subprocess forking and synchronization
+ * - inter-process result data gathering and command sending
+ *
+ * @param argc The number of arguments passed via command line, including the program name.
+ * @param argv An argc long array of strings containing the arguments passed via command line.
+ * First argument, argv[0], is the program name.
+ *
+ */
 int main(int argc, char **argv)
 {
     // Registering Ctr-C signal
@@ -192,6 +198,15 @@ int main(int argc, char **argv)
     destroy_shared_resources();
     debugf("Program Completed Successfully! :-)\n");
     return 0;
+}
+
+void help(char *prog_name)
+{
+    debugf("uso: %s <nome file di calcolo> <nome file per i risultati>\n",prog_name);
+    debugf("requirements:\n\
+            * there must be no empty lines between command instructions\n\
+            * every line must contain all expected information\n");
+    exit(0);
 }
 
 
