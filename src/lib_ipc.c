@@ -30,23 +30,31 @@ void destroy_shared_resources()
     debugf("Freeing resources...\n");
     debugf("* Semaphore %d\n",SEMID_FREE);
     if (SEMID_FREE != -1)
+    {
         if (semctl(SEMID_FREE, 0, IPC_RMID) == -1)
             debugf("!!!\t(please run: ipcrm -s %d)\n",SEMID_FREE);
         else SEMID_FREE = -1;
+    }
     debugf("* Semaphore %d\n",SEMID_WORK);
     if (SEMID_WORK != -1)
+    {
         if (semctl(SEMID_WORK, 0, IPC_RMID) == -1)
             debugf("!!!\t(please run: ipcrm -s %d)\n",SEMID_WORK);
         else SEMID_WORK = -1;
+    }
     if (SHM != (void *) -1)
+    {
         if (shmdt(SHM) == -1)
             debugf("!!!\t(error detaching shared memory from process...should be no problem)\n");
         else SHM = (void *) -1;
+    }
     debugf("* Shared Memory %d\n",SHMID);
     if (SHMID != -1)
+    {
         if (shmctl(SHMID, IPC_RMID, NULL) == -1)
             debugf("!!!\t(plrease run: ipcrm -m %d)\n",SHMID);
         else SHMID = -1;
+    }
     debugf("DONE!\n");
 }
 
