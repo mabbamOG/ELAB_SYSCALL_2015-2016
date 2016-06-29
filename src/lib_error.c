@@ -1,3 +1,16 @@
+/** @file
+ *
+ * @brief this file provides functionality to handle all errors, including messages sent to stderr (through debugf()).
+ *
+ * The exception() function is very common throughout the whole project, and is extremely helpful in ensuring compact
+ * sycall error managent. Since its functionality resembles that of common exceptions (such as in C++, Java or Python languages),
+ * its name reflects this.
+ * The force_quit() function is required as a signal handler to register the program for receiving a SIGINT (Ctrl-C) signal
+ * from the user. It is mainly a precaution.
+ * Finally, debugf() is a marvellous little function allowing me to easily "printf" data to stderr without loss of similarity,
+ * while instead using direct syscalls, as per project requirements.
+ *
+ */
 #include "lib_error.h"
 
 #include "lib_io.h"

@@ -3,12 +3,12 @@
 struct command; // Incomplete "forward" declaration to avoid including whole lib_ipc.h
 
 /**
- * @brief grabs the next integer in a string, also while changing its pointer offset
+ * @brief grabs the next integer in a string, also while changing its pointer offset.
  *
  * @param buf_offset a pointer to a string. Needed to move forward the string offset
  * after having read an integer.
  *
- * @return the next integer found in the string
+ * @return the next integer found in the string.
  */
 int next_integer(char **buf_offset);
 
@@ -27,7 +27,7 @@ int next_command(char **buf_offset, struct command *cmd);
 
 /**
  * @brief grabs the number of instructions of type (struct command) contained in a given string.
- * next_command() does so by checking for the number of '\n' character found in the file, being
+ * next_command() does so by checking for the number of '\\n' character found in the file, being
  * careful to exclude whitespace found at the beginning or the end.
  *
  * @param s the string to be scanned.

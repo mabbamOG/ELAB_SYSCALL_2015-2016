@@ -2,7 +2,7 @@
 #define LIB_ERROR
 
 /**
- * @brief this function is used to clean up IPC resources and exit() whenever a syscall returns an error
+ * @brief this function is used to clean up IPC resources and exit() whenever a syscall returns an error.
  *
  * @param s a string to be printed to stderr before freeing IPC resources and quitting.
  */

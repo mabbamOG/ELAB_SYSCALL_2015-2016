@@ -1,3 +1,12 @@
+/** @file
+ *
+ * @brief this is the file containing all main IPC shared resources operating functionality.
+ *
+ * lib_ipc.c comes along with its own header file (lib_ipc.h), to provide a public interface to IPC functionality of this program.
+ * In this file the P() and V() functions allow for simple Semaphore management, while init_shared_resources() and 
+ * destroy_shared_resources() allow for simple global resource management.
+ *
+ */
 #include "lib_ipc.h"
 #include "lib_error.h"
 #include <sys/sem.h>

@@ -5,11 +5,13 @@ SRCDIR = src
 BINDIR = bin
 IDIR = $(SRCDIR)/include
 ODIR = $(BINDIR)/obj
+DOCDIR = doc
 
 # FILES
 SRCS = $(wildcard $(SRCDIR)/*.c); # all source files in source dir
 OBJS = $(addprefix $(ODIR)/, $(notdir $(addsuffix .o, $(basename $(SRCS))))) # all corrensponding object files
 MAIN = $(BINDIR)/main.x # all executable files to be made
+HDRS = $(wildcard $(IDIR)/*.h); # all header files in header dir
 
 # COMPILERS AND FLAGS
 CCFLAGS = -c -Wall -ggdb -I$(IDIR) # (-c no linking) (-Wall smart warnings) (-ggdb gdb debugger info) (-Idir look for .h in dir)
@@ -38,10 +40,13 @@ $(ODIR)/main.o: $(SRCDIR)/main.c
 clean:
 	@rm -rf $(ODIR)
 	@rm -rf $(BINDIR)
-#doc:
-#	...
+	@rm -rf $(DOCDIR)
+
+doc:
+	@doxygen
+
 help:
 	@echo "run: make or make <command>"
-	@echo "available commands: all clean help doc debug"
+	@echo "available commands: all clean help doc"
 
-.PHONY: all clean #doc help debug # tasks that will always run, ignoring if files called like them exist
+.PHONY: all clean doc help # tasks that will always run, ignoring if files called like them exist

@@ -1,3 +1,12 @@
+/** @file
+ *
+ * @brief this is the file containing some functions useful for operating on strings, that do not belong in the main file.
+ *
+ * The get_num_ops() next_integer() and next_command() functions are used to parse the main input file (already read into a string) 
+ * and aid the program in swiftly extracting needed information.
+ * The strlen() function is used by the debugf() function from "lib_error.h" and parses strings as well.
+ *
+ */
 #include "lib_io.h"
 #include "lib_ipc.h"
 
