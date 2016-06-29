@@ -8,8 +8,7 @@ ODIR = $(BINDIR)/obj
 
 # FILES
 SRCS = $(wildcard $(SRCDIR)/*.c); # all source files in source dir
-OBJS = $(addprefix $(ODIR)/, $(notdir $(addsuffix .o, $(basename $(SRCS))))) # all corresponding object files
-#HDRS = lib_ipc.h lib_io.h lib_error.h
+OBJS = $(addprefix $(ODIR)/, $(notdir $(addsuffix .o, $(basename $(SRCS))))) # all corrensponding object files
 MAIN = $(BINDIR)/main.x # all executable files to be made
 
 # COMPILERS AND FLAGS
@@ -20,21 +19,21 @@ LD = gcc $(LDFLAGS)
 all: $(MAIN)
 	@echo "==> ALL DONE!"
 
-
 $(MAIN): $(OBJS)
 	@echo "==> linking $@..."
 	@mkdir -p "$(BINDIR)"
 	@$(LD) $^ -o $@
 
-$(ODIR)/%.o: $(SRCDIR)/%.c # add %.h??? main does not have one!
+$(ODIR)/%.o: $(SRCDIR)/%.c $(IDIR)/%.h
 	@echo "==> compiling $@..."
 	@mkdir -p "$(ODIR)"
 	@$(CC) $< -o $@
 
- # WARNING: THE .H FILES ARE NOT ANALYZED FOR CHANGES!! MUST ADD THEM TO DEPENDENCIES!!!
-
-# %.o: $(IDIR)/%.h
-
+# main.c is the only file not dependant on its own header file!
+$(ODIR)/main.o: $(SRCDIR)/main.c
+	@echo "==> compiling $@..."
+	@mkdir -p "$(ODIR)"
+	@$(CC) $< -o $@
 
 clean:
 	@rm -rf $(ODIR)
@@ -44,9 +43,5 @@ clean:
 help:
 	@echo "run: make or make <command>"
 	@echo "available commands: all clean help doc debug"
-
-debug:
-	@echo "$(SRCS)"
-	@echo "$(OBJS)"
 
 .PHONY: all clean #doc help debug # tasks that will always run, ignoring if files called like them exist
