@@ -25,6 +25,11 @@ void slave(int id);
 int find_free_proc(int nprocs);
 void help(char *prog_name);
 
+/** 
+ * @brief prints information about usage of the program
+ *
+ * @param prog_name the name of the current program, argv[0] is expected to be used when calling this function
+ * */
 void help(char *prog_name)
 {
     debugf("uso: %s <nome file di calcolo> <nome file per i risultati>\n",prog_name);
@@ -146,6 +151,14 @@ int main(int argc, char **argv)
 }
 
 
+/**
+ * @brief gets the id for a process that is currently free
+ *
+ * @param nprocs the number of processes that need to be tested for availability
+ *
+ * @return the id of a child waiting on a semaphore to execute commands. If no
+ * free children are found then 1 is returned
+ */
 int find_free_proc(int nprocs)
 {
     struct sembuf op = { 0, -1, IPC_NOWAIT };
@@ -165,7 +178,12 @@ int find_free_proc(int nprocs)
     return id;
 }
 
-
+/**
+ * @brief the main processing unit for a child process
+ *
+ * @param id the id for this child-process, required to manage shared memory
+ * accesses.
+ */
 void slave(int id)// ??? Should make get_data | drop result, more explicit?
 {
     while(1)
@@ -198,6 +216,17 @@ void slave(int id)// ??? Should make get_data | drop result, more explicit?
     }
 }
 
+/**
+ * @brief the main processing unit for the father, used to send off commands
+ * to child-processes one at a time.
+ *
+ * @param id the id of the process to send the command off to.
+ * @param cmd the pointer to a struct command containing the information
+ * fot the command to be sent.
+ * @param RESULTS the pointer to the father's array of command results. It
+ * is passed on to this function in order to be able to gather results to
+ * possible past commands sent to child-process id.
+ */
 void master(int id, struct command *cmd, int *RESULTS)
 {
     P(SEMID_FREE,id);
