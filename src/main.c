@@ -1,18 +1,15 @@
-//#include <signal.h> //  not needed when there is sys/wait.h
 // TODO: standard naming of "get" and "next" functions, and all other functions!
-// TODO: split lib.h in multiple libraries containing different function types
-// TODO: ??? put global vars in lib.h?
-// TODO: do i really need to detach shared memory?
 // TODO: should i use buf_offset?
-// TODO: check semaphore permissions semget
-// TODO: check all other ipc get/ctl stuff...need to understand perfectly why all params are used or not
-// TODO: should i check for '\0' in next_ functions?
+// TODO: ??? do i need more static variables in functions?
+// TODO: ??? fix naming of some functions?
+// TODO: should i change buf_offset to offset?
+// TODO: check im not using any man 3 calls except printf or ftok ecc...
 #include "lib_ipc.h"
 #include "lib_io.h"
 #include "lib_error.h"
+#include <signal.h>
 #include <sys/wait.h>
 #include <sys/sem.h>
-#include <sys/ipc.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <fcntl.h>
@@ -25,7 +22,7 @@
 
 void master(int id, struct command *cmd, int *RESULTS);
 void slave(int id);
-int find_free_procs(int nprocs);
+int find_free_proc(int nprocs);
 void help(char *prog_name);
 
 void help(char *prog_name)
@@ -33,7 +30,7 @@ void help(char *prog_name)
     debugf("uso: %s <nome file di calcolo> <nome file per i risultati>\n",prog_name);
     debugf("requirements:\n\
             * there must be no empty lines between command instructions\n\
-            * every line must contain expected information\n");
+            * every line must contain all expected information\n");
     exit(0);
 }
 
@@ -108,7 +105,7 @@ int main(int argc, char **argv)
         // Setup info to send to process:
         int id = next_command(&buf_offset,&cmd);
         if (id == 0)
-            id = find_free_procs(NPROCS);
+            id = find_free_proc(NPROCS);
 
         // Send Off Command (possibly grabbing result for previously sent command)
         cmd.res_pos = j;
@@ -144,12 +141,12 @@ int main(int argc, char **argv)
     
     // Free up resources
     destroy_shared_resources();
-    debugf("OKOKOKOKOKOKOKOKOKOKOKOKOKOK :-)\n");
+    debugf("Program Completed Successfully! :-)\n");
     return 0;
 }
 
 
-int find_free_procs(int nprocs)
+int find_free_proc(int nprocs)
 {
     struct sembuf op = { 0, -1, IPC_NOWAIT };
     int id;
