@@ -1,3 +1,24 @@
+/***************** COPYRIGHT AND WARRANTY **********************************
+    IPC and Syscall project for my O.S. course at Univr.
+    Copyright (C) 2016  Mario A. Barbara (mariobarbara@tutanota.de)
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+***************************************************************************/
+
+
+
+
 /** @file 
  *
  * @brief this is the main file for the program.
@@ -69,6 +90,11 @@ int find_free_proc(int nprocs);
 void help(char *prog_name);
 
 /**
+ * @brief prints COPYRIGHT and LICENSE information about this program.
+ */
+void about();
+
+/**
  * @brief The main program logic.
  *
  * This function is nor too big, nor too small. A lot of the functionality has been offloaded to the project's
@@ -85,6 +111,9 @@ void help(char *prog_name);
  */
 int main(int argc, char **argv)
 {
+    // Print information about this program
+    about();
+
     // Registering Ctr-C signal
     if (signal(SIGINT, force_quit) == SIG_ERR)
         exception("ERROR while registering SIGINT signal!");
@@ -280,3 +309,16 @@ void master(int id, struct command *cmd, int *RESULTS)
     V(SEMID_WORK,id);
 }
 
+void about()
+{
+    static char statement[] = "\n\
+    Elaborato IPC (@UNIVR 2015/2016) Copyright (C) 2016 Mario Alessandro Barbara\n\
+    This program comes with ABSOLUTELY NO WARRANTY.\n\
+    This is free software, and you are welcome to redistribute it\n\
+    under certain conditions.\n\
+    For details see the 'LICENSE' file that should have been distributed\n\
+    along with this proram, if not, see <http://www.gnu.org/licenses/>.\n\n\n";
+
+    // Print this statement
+    debugf(statement);
+}
