@@ -13,23 +13,25 @@ extern int SHMID;
 extern struct command *SHM; 
 /* @} */
 
-///The structure used in Shared Memory SHM used between father and child-processes.
+/// @brief The structure used in Shared Memory SHM used between father and child-processes.
 struct command 
 {
-    /// The character representing the instructions passed from father to child. Is set to '?'
-    /// when SHM is first initialized, and is set to '!' when a child-process completes a computation. This
-    /// is to distinguish shared memory of processes which have never completed a computation. In fact, 
-    /// not all the child-processes are required to execute a task.
+    /** @brief The character representing the instructions passed from father to child. Is set to '?'
+    * when SHM is first initialized, and is set to '!' when a child-process completes a computation. This
+    * is to distinguish shared memory of processes which have never completed a computation. In fact, 
+    * not all the child-processes are required to execute a task.
+    */
     char instr;
-    /// The first parameter of the command passed on to a child-process.
+    /** @brief The first parameter of the command passed on to a child-process. */
     int par1;
-    /// The second parameter of the command passed on to a child-process.
+    /** @brief The second parameter of the command passed on to a child-process. */
     int par2;
-    /// The result of the computation.
+    /** @brief The result of the computation. */
     int res;
-    /// Is a necessary requirement to allow the father to keep sending off instructions
-    /// without stopping to wait for results. This value is copied over to memory when the command is given,
-    /// and used as an indev for a local array of results when the result is grabbed.
+    /** @brief Is a necessary requirement to allow the father to keep sending off instructions
+    * without stopping to wait for results. This value is copied over to memory when the command is given,
+    * and used as an index for a local array of results when the result is grabbed.
+    */
     int res_pos;
 };
 

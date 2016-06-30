@@ -51,3 +51,5 @@ GENERATE_HTML          = YES
 # The default value is: NO.
 # This tag requires that the tag GENERATE_HTML is set to YES.
 GENERATE_TREEVIEW      = YES
+
+GENERATE_LATEX         = NO

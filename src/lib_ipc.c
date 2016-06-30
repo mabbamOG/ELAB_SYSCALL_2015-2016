@@ -38,6 +38,7 @@ void destroy_shared_resources()
 {
     debugf("Freeing resources...\n");
     debugf("* Semaphore %d\n",SEMID_FREE);
+    // Destroy Sem1 array, if it has already been initialized
     if (SEMID_FREE != -1)
     {
         if (semctl(SEMID_FREE, 0, IPC_RMID) == -1)
@@ -45,18 +46,21 @@ void destroy_shared_resources()
         else SEMID_FREE = -1;
     }
     debugf("* Semaphore %d\n",SEMID_WORK);
+    // Destroy Sem2 array, if it has already been initialized
     if (SEMID_WORK != -1)
     {
         if (semctl(SEMID_WORK, 0, IPC_RMID) == -1)
             debugf("!!!\t(please run: ipcrm -s %d)\n",SEMID_WORK);
         else SEMID_WORK = -1;
     }
+    // Detach Shm from this process, if it has already been attached
     if (SHM != (void *) -1)
     {
         if (shmdt(SHM) == -1)
             debugf("!!!\t(error detaching shared memory from process...should be no problem)\n");
         else SHM = (void *) -1;
     }
+    // Destroy Shm array, if it has already been initialized
     debugf("* Shared Memory %d\n",SHMID);
     if (SHMID != -1)
     {
@@ -111,7 +115,7 @@ void init_shared_resources(char *keystr,int res_size)
             exception("ERROR while attaching shared memory SHMID to process!");
     debugf("FATHER: Shm id: %d\n",SHMID);
 
-    // Initialize shared memory:
+    // Initialize shared memory
     for(int i=0; i<res_size; ++i)
         SHM[i].instr = '?'; // no op yet
 }

@@ -12,12 +12,6 @@
  * The complete LICENSE file should be provided along with the project's source code.
  *
  */
-// TODO: standard naming of "get" and "next" functions, and all other functions!
-// TODO: should i use buf_offset?
-// TODO: ??? do i need more static variables in functions?
-// TODO: ??? fix naming of some functions?
-// TODO: should i change buf_offset to offset?
-// TODO: check im not using any man 3 calls except printf or ftok ecc...
 #include "lib_ipc.h"
 #include "lib_io.h"
 #include "lib_error.h"
@@ -99,56 +93,60 @@ int main(int argc, char **argv)
     if (argc != 3)
         help(argv[0]);
 
-    // Get access to input and output files:
+    // Get access to input and output files
     debugf("FATHER: opening files...\n");
     int fdinput = open(argv[1], O_RDONLY, 0);
     if (fdinput == -1)
         exception("ERROR while opening input file!");
     int fdoutput = open(argv[2], O_WRONLY | O_CREAT | O_SYNC | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
     if (fdoutput == -1)
-        exception("ERROR while opening output file!");
+        exception("ERROR while creating output file!");
 
-    // Get Input filesize:
+    // Get Input filesize
     struct stat stats;
     if (fstat(fdinput, &stats) == -1)
         exception("ERROR while getting input file filesize!");
     const int FILESIZE = stats.st_size;
     if (FILESIZE < MINFILESIZE)
-        exception("ERROR input file too small");
+        exception("ERROR input file too small!");
     if (FILESIZE > MAXFILESIZE)
-        exception("ERROR input file way too big");
+        exception("ERROR input file way too big!");
 
-    // Read file into buffer:
+    // Read file into buffer
     debugf("FATHER: reading input file...\n");
     char buf[FILESIZE];
-    char *buf_offset = buf;
+    char *buf_offset = buf; // this is the pointer that will move throughout the file
     if(read(fdinput, buf, FILESIZE) == -1)
         exception("ERROR while loading input file into buffer!");
     buf[FILESIZE-1]='\0'; // set end marker
     if (close(fdinput) == -1)
         exception("ERROR while closing input file!");
 
-    // Get threads:
+    // Get threads
     const int NPROCS = next_integer(&buf_offset);
     if (NPROCS<1)
-       exception("please create more processes");
+       exception("ERROR please use more processes!");
 
-    //  Init shared resources:
+    //  Init shared resources
     debugf("FATHER: getting shared resources...\n");
     init_shared_resources(argv[2],NPROCS + 1); // !!! +1 because i want to use "id" freely
 
-    // Make threads:
+    // Make threads
     debugf("FATHER: forking off to %d children...\n",NPROCS);
     for (int id = 1; id<=NPROCS; ++id)
     {
         int pid = fork();
         if (pid == -1)
             exception("ERROR while forking!");
-        else if (pid==0) // Child:
+        
+        /*************** Child: *****************/
+        else if (pid==0) 
             slave(id);
+        /****************************************/
     }
 
-    // Father:
+    /*************** Father: *****************/
+    // Get number of commands to send
     struct command cmd;
     const int NOPS = get_num_ops(buf_offset);
     int RESULTS[NOPS];
@@ -157,7 +155,7 @@ int main(int argc, char **argv)
     debugf("FATHER: sending %d commands...\n",NOPS);
     for (int j = 0; j<NOPS; ++j)
     {
-        // Setup info to send to process:
+        // Setup info to send to process
         int id = next_command(&buf_offset,&cmd);
         if (id == 0)
             id = find_free_proc(NPROCS);
@@ -180,9 +178,9 @@ int main(int argc, char **argv)
 
     // Wait for all children to exit
     debugf("FATHER: waiting for children to die...\n");
-    while( wait(NULL) > 0); // ??? should i wait for nprocs processes?
+    while( wait(NULL) > 0); // while there are still children alive
 
-    // Write RESULTS to buf buffer
+    // Write RESULTS to buf buffer (was also used to read the input file)
     debugf("FATHER: writing results to output file...\n");
     int output_size = 0;
     for (int j=0; j<NOPS; ++j)
@@ -212,11 +210,14 @@ void help(char *prog_name)
 
 int find_free_proc(int nprocs)
 {
-    struct sembuf op = { 0, -1, IPC_NOWAIT };
+    struct sembuf op = { 0, -1, IPC_NOWAIT }; // IPC_NOWAIT: do not wait for the semaphore to become available
     int id;
+    
+    // Cycle through all process semaphores
     for (id=1; id<=nprocs; ++id)
     {
         op.sem_num = id;
+        // Check if one is available
         if (semop(SEMID_FREE, &op, 1) == 0)
         {
             V(SEMID_FREE,id); // free up resource i just used
@@ -229,14 +230,15 @@ int find_free_proc(int nprocs)
     return id;
 }
 
-void slave(int id)// ??? Should make get_data | drop result, more explicit?
+void slave(int id)
 {
     while(1)
     {
         P(SEMID_WORK,id);
-            switch(SHM[id].instr)// Get Data
+            switch(SHM[id].instr)// Get instruction
             {
-                case '+':// Drop Result
+                // Drop result
+                case '+':
                     SHM[id].res = SHM[id].par1 + SHM[id].par2;
                     break;
                 case '-':
@@ -256,7 +258,9 @@ void slave(int id)// ??? Should make get_data | drop result, more explicit?
                     exception("ERROR invalid instruction found!");
                     break;
             }
-            SHM[id].instr = '!'; // telling master i have ever run any op
+
+            // Tell master i have already completed a command
+            SHM[id].instr = '!';
         V(SEMID_FREE,id);
     }
 }
@@ -264,9 +268,10 @@ void slave(int id)// ??? Should make get_data | drop result, more explicit?
 void master(int id, struct command *cmd, int *RESULTS)
 {
     P(SEMID_FREE,id);
-        // Get result...
-        if (SHM[id].instr == '!') // making sure this isn't the first instruction
+        // Grab previous results, if any
+        if (SHM[id].instr == '!') // making sure this isn't the first time this process receives a command
             RESULTS[SHM[id].res_pos] = SHM[id].res;
+
         // Drop the data
         SHM[id].res_pos = cmd->res_pos;
         SHM[id].instr = cmd->instr;

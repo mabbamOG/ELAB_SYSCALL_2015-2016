@@ -23,7 +23,7 @@
 
 void exception(char *s)
 {
-    debugf("%s\n",s);
+    debugf("%s\n",s); // print formatted error message
     destroy_shared_resources();
     exit(1);
 }
@@ -35,13 +35,17 @@ void force_quit(int sigid)
 
 void debugf(char *s, ...) //  MAX 1 argument!
 {
-
+    // Check whether this is a normal string or a formatted one
     int offset = strlenf(s);
+
+    // Normal string:
     if (s[offset] == '\0')
     {
         if (write(2, s, offset) < offset)
             exit(0); // can't alert user
     }
+
+    // Formatted string:
     else
     {
         // Initialize variable arguments list (s is the last argument before the list)
@@ -49,18 +53,20 @@ void debugf(char *s, ...) //  MAX 1 argument!
         va_start(args, s);
         
         // Split string into 3
-        char *a = s;
+        char *a = s; // before the formatted argument
         int alen = offset-1;
-        static char b[100];
+        static char b[100]; // buffer to store the formatted argument
         int blen = 0;
-        char *c = s+offset+1;
+        char *c = s+offset+1; // after the formatted argument
         int clen = strlenf(c);
+
+        // Store formatted argument into b buffer
         if (c[-1] == 'd')
             blen = sprintf(b, "%d", va_arg(args, int));
         else if (c[-1] == 's')
             blen = sprintf(b, "%s", va_arg(args, char *));
 
-        // Write into single buffer for atomicity (writev is faulty...)
+        // Write into single buffer for atomicity, as writev seems to be faulty... :-(
         static char buf[500];
         snprintf(buf, alen+1, "%s", a);
         snprintf(buf+alen, blen+1, "%s", b);
