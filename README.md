@@ -1,4 +1,4 @@
-# Elaborato Operating Systems @UNIVR - Unix Syscalls with C
+# Elaborato Operating Systems @UNIVR - Unix Syscalls with C :fire::fire::thumbsup:
 This is the project required for the Univr O.S. programming course i've taken.
 
 ## RUNNING and COMPILATION
